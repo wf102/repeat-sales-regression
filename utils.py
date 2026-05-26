@@ -4,13 +4,16 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 
-DIR = "data"
-
-def process_ppd():
+def process_ppd(file_in, file_out):
+    
+    """
+    Reads a raw PPD CSV from eg https://landregistry.data.gov.uk/app/ppd/?relative_url_root=%2Fapp%2Fppd
+    Removes unecessary fields, saves to CSV file.
+    """
 
     columns = {1: "Price", 2: "Date", 3: "Postcode", 7: "Paon", 8: "Saon"}
 
-    df = pd.read_csv("ppd_gl51.csv", usecols=columns.keys(), header=None)
+    df = pd.read_csv(file_in, usecols=columns.keys(), header=None)
     df.columns = columns.values()
 
     # Generate unique identifier for each property based on Paon, Saon, and Postcode
@@ -23,13 +26,14 @@ def process_ppd():
     # Factorize the 'id' column to convert it into numeric values
     df["id"], _ = pd.factorize(df["id"])
 
-    df = df.drop(columns = ["Paon", "Saon", "Postcode"])
-    df.to_csv(f"{DIR}/ppd_gl51_clean.csv", index=False)
+    df[["Price", "Date", "id"]].to_csv(file_out, index=False)
 
 
-def get_sale_pairs(df):
+def generate_sale_pairs(file_in, file_out):
 
-    print("Generating sale pairs")
+    """Reads in the cleaned PPD, generates raw sale pairs data and saves to CSV."""
+
+    df = pd.read_csv(file_in)
 
     # Group by 'id' and sort by 'Date' within each group
     df_sorted = df.sort_values(by=['id', 'Date'])
@@ -56,8 +60,21 @@ def get_sale_pairs(df):
                     'Price1': int(first_sale['Price']),
                     'Price2': second_sale['Price'],
                 }])], ignore_index=True)
-    
-    sale_pairs = sale_pairs.astype({
+
+    sale_pairs.to_csv(file_out, index=False)
+
+
+def process_sale_pairs(sale_pairs, period):
+
+    """
+    Processes sale pairs:
+        - Rounds all sale dates to nearest time period
+        - Calculates log price difference for each sale pair
+        - Removes sales pairs with both dates within the same period
+    Calculate date values for each time period.      
+    """
+
+    sale_pairs = pd.read_csv("data/sale_pairs.csv", dtype={
         'id': 'int64',
         'Date1': 'string',
         'Date2': 'string',
@@ -65,24 +82,29 @@ def get_sale_pairs(df):
         'Price2': 'int64',
     })
 
-    return sale_pairs
-
-
-def process_sale_pairs(sale_pairs, period):
-
-    # Round dates to nearest quarter
+    # Round dates to nearest time period (ie month, quarter, year...)
     sale_pairs["Date1"] = pd.to_datetime(sale_pairs["Date1"]).dt.to_period(period)
     sale_pairs["Date2"] = pd.to_datetime(sale_pairs["Date2"]).dt.to_period(period)
-    dates = np.sort(list(sale_pairs[["Date1","Date2"]].stack().unique()))
-    date_values = pd.to_datetime(pd.PeriodIndex(dates, freq=period).to_timestamp())
 
     # Remove pairs where both sales are in the same period
     sale_pairs = sale_pairs[sale_pairs["Date1"] != sale_pairs["Date2"]].reset_index() 
+
+    # Generate log price difference (dependent variable for regression)
+    sale_pairs["log_price_diff"] = np.log(sale_pairs["Price2"]) - np.log(sale_pairs["Price1"])
+
+    dates = np.sort(list(sale_pairs[["Date1","Date2"]].stack().unique()))
+    date_values = pd.to_datetime(pd.PeriodIndex(dates, freq=period).to_timestamp())
 
     return sale_pairs, date_values
 
 
 def generate_design_matrix(sale_pairs, period):
+
+    """
+    Generates design matrix for repeat sales regression.
+    Matrix is zeros, -1 for the first sale, +1 for the second sale.
+    This allows the matrix to pick out the relevant index value for each transaction.
+    """
 
     n_pairs = len(sale_pairs)
     dates = np.sort(list(sale_pairs[["Date1","Date2"]].stack().unique()))
@@ -107,6 +129,8 @@ def generate_design_matrix(sale_pairs, period):
 
 
 def create_plot(date_values, hpi):
+
+    """Plots index, saves to PNG."""
 
     sns.set_theme()
 

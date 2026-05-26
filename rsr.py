@@ -1,6 +1,6 @@
 # https://www.sciencedirect.com/science/article/pii/S1051137705800282
 
-# Raw file downloadded from "https://landregistry.data.gov.uk/app/ppd/?relative_url_root=%2Fapp%2Fppd"
+# Raw file downloaded from "https://landregistry.data.gov.uk/app/ppd/?relative_url_root=%2Fapp%2Fppd"
 # Search for Postcode = GL51
 # Download subsequent CSV as all fields for GL51 district (ppd_gl51.csv) - 29769 rows (as of May 2026)
 
@@ -9,23 +9,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.linalg import lstsq
 
-from utils import get_sale_pairs, process_sale_pairs, generate_design_matrix, create_plot
+from utils import process_sale_pairs, generate_design_matrix, create_plot, process_ppd, generate_sale_pairs
 
 DIR = "data"
 period = "Q"
 
-df_ppd = pd.read_csv(f"{DIR}/ppd_gl51_clean.csv")
-
-
-# Generate repeat sales pairs and save to intermediate file
-sale_pairs = get_sale_pairs(df_ppd)
-sale_pairs.to_csv(f"{DIR}/sale_pairs.csv", index=False)
-
-# Process sales pairs
-sale_pairs, date_values = process_sale_pairs(sale_pairs, period)
+# Read and process sales pairs
+sale_pairs, date_values = process_sale_pairs(f"{DIR}/sale_pairs.csv", period)
 
 # Generate vector of dependant variables y (ln(P2/P1))
-sale_pairs["log_price_diff"] = np.log(sale_pairs["Price2"]) - np.log(sale_pairs["Price1"])
 y = np.array(sale_pairs["log_price_diff"].values)
 
 # Generate design matrix
