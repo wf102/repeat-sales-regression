@@ -11,10 +11,10 @@ def process_ppd(file_in, file_out):
     Removes unecessary fields, saves to CSV file.
     """
 
-    columns = {1: "Price", 2: "Date", 3: "Postcode", 7: "Paon", 8: "Saon"}
+    columns = {"Price": 1, "Date": 2, "Postcode": 3, "Paon": 7, "Saon": 8}
 
-    df = pd.read_csv(file_in, usecols=columns.keys(), header=None)
-    df.columns = columns.values()
+    df = pd.read_csv(file_in, usecols=columns.values(), header=None)
+    df.columns = columns.keys()
 
     # Generate unique identifier for each property based on Paon, Saon, and Postcode
     df["id"] = (
