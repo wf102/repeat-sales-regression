@@ -14,26 +14,32 @@ from utils import process_sale_pairs, generate_design_matrix, create_plot, proce
 DIR = "data"
 period = "Q"
 
-# Read and process sales pairs
-sale_pairs, date_values = process_sale_pairs(f"{DIR}/sale_pairs.csv", period)
+def main():
 
-# Generate vector of dependant variables y (ln(P2/P1))
-y = np.array(sale_pairs["log_price_diff"].values)
+    # Read and process sales pairs
+    sale_pairs, date_values = process_sale_pairs(f"{DIR}/sale_pairs.csv", period)
 
-# Generate design matrix
-M = generate_design_matrix(sale_pairs, period)
+    # Generate vector of dependant variables y (ln(P2/P1))
+    y = np.array(sale_pairs["log_price_diff"].values)
 
-# Remove first column to set first parameter as base index
-M_red = M[:, 1:] 
+    # Generate design matrix
+    M = generate_design_matrix(sale_pairs, period)
 
-# Perform least squares regression with SciPy to find index parameters
-params, *_ = lstsq(M_red, y)
+    # Remove first column to set first parameter as base index
+    M_red = M[:, 1:] 
 
-# Add in base parameter as 0
-params = np.concatenate([[0], params])
+    # Perform least squares regression with SciPy to find index parameters
+    params, *_ = lstsq(M_red, y)
 
-# Exponentiate to recover House Price Index (HPI=1 in 1995)
-hpi = np.exp(params)
+    # Add in base parameter as 0
+    params = np.concatenate([[0], params])
 
-# Generate plot
-create_plot(date_values, hpi)
+    # Exponentiate to recover House Price Index (HPI=1 in 1995)
+    hpi = np.exp(params)
+
+    # Generate plot
+    create_plot(date_values, hpi)
+
+
+if __name__ == "__main__":
+    main()
