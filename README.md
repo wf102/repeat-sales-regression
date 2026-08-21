@@ -24,6 +24,16 @@ This repo contains a basic implementatino of RSR, using PPD for the GL51 postcod
 The raw data includes all processed residential sales for GL51 from Jan 1995 to Mar 2026 (a total of 29769 sales).
 The regression itself is performed by the `lstsq` function from SciPy.
 
+### Regularisation
+
+To avoid overfitting with the RSR, a smoothing function can be applied on top of the index parameters.
+One such method would be Gaussian Process Regression (GPR), which has been implemented here.
+Using an RBF kernel with noise value of 0.015 we get a suitable level of smoothing.
+The fitted model gives a characteristic length scale of 6.61 months, which provides an empirical benchmark for the timescale of regularisation.
+
+In order to optimise the smoothing, backtesting should be performed with a time-based split of the data.
+
+
 ## Running the regression (MacOS)
 
 The `rsr.py` script currently runs on the pre-generated repeat sales dataset.
