@@ -6,10 +6,9 @@
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from scipy.linalg import lstsq
 
-from utils import process_sale_pairs, generate_design_matrix, create_plot, process_ppd, generate_sale_pairs
+from utils import process_sale_pairs, generate_design_matrix, create_plot, smooth_hpi
 
 DIR = "data"
 period = "Q"
@@ -34,11 +33,15 @@ def main():
     # Add in base parameter as 0
     params = np.concatenate([[0], params])
 
+    # Regularisation using smoothing function
+    params_smooth = smooth_hpi(params, 0.015)
+
     # Exponentiate to recover House Price Index (HPI=1 in 1995)
     hpi = np.exp(params)
+    hpi_smooth = np.exp(params_smooth)
 
     # Generate plot
-    create_plot(date_values, hpi)
+    create_plot(date_values, hpi, hpi_smooth)
 
 
 if __name__ == "__main__":

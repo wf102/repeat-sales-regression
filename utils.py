@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF
 
 def process_ppd(file_in, file_out):
     
@@ -128,7 +130,26 @@ def generate_design_matrix(sale_pairs, period):
     return M
 
 
-def create_plot(date_values, hpi):
+def smooth_hpi(y, noise=0.01):
+
+    """
+    Apply Gaussian Process Regression (GPR) to smooth (regularise) raw repeat sales regression.
+    Noise parameter is an estimate of the uncertainty of repeat sales regression parameters.
+    These values can be in principle be extracted from the repeat sales regression.
+    Note the smoothness of the GPR is highly sensitive to the noise value.
+    """
+
+    X = np.arange(len(y)).reshape(-1, 1)
+    
+    kernel = 1 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2))
+
+    gaussian_process = GaussianProcessRegressor(kernel=kernel, alpha=noise**2, n_restarts_optimizer=9)
+    gaussian_process.fit(X, y)
+
+    return gaussian_process.predict(X, return_std=False)
+
+
+def create_plot(date_values, hpi, hpi_smooth):
 
     """Plots index, saves to PNG."""
 
@@ -136,13 +157,15 @@ def create_plot(date_values, hpi):
 
     fig, ax = plt.subplots(figsize=(12,8))
 
-    plt.plot(date_values, hpi)
+    plt.plot(date_values, hpi, color="grey", label="Unregularised")
+    plt.plot(date_values, hpi_smooth, color="black", label="Regularised")
     plt.gca().xaxis.set_major_locator(mdates.YearLocator(5))
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     plt.ylim((0, 1.1 * max(hpi)))
     plt.xlabel("Time")
     plt.ylabel("Index")
     plt.title("Repeat Sales Regression Price Index")
+    plt.legend(loc='upper left')
     plt.tight_layout()
     plt.savefig("hpi_plot.png")
 
